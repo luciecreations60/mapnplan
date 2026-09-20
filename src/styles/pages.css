@@ -7116,3 +7116,13 @@
   gap: 8px;
   margin-top: 10px;
 }
+
+.vehicle-wear-toggle__control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.vehicle-wear-toggle__control input { width: 16px; height: 16px; }

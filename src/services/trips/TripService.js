@@ -529,6 +529,8 @@ class TripService {
               consumptionLPer100Km: Math.max(0, Number(item.consumptionLPer100Km) || 0),
               fuelPricePerLiter: Math.max(0, Number(item.fuelPricePerLiter) || 0),
               tolls: Math.max(0, Number(item.tolls) || 0),
+              includeWear: Boolean(item.includeWear),
+              wearCostPerKm: Math.max(0, Number(item.wearCostPerKm) || 0),
               notes: String(item.notes || '').trim(),
               reminderMinutes: this.#normalizeReminderMinutes(item.reminderMinutes),
               externalCalendarUid: String(item.externalCalendarUid || '').trim(),

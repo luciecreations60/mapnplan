@@ -3,7 +3,7 @@ import { useI18n } from '../../hooks/useI18n.js';
 import { formatLocalizedDate } from '../../utils/date.js';
 import { createId } from '../../utils/id.js';
 import { estimateRouteSegment } from '../../utils/routeOptimization.js';
-import { estimateDrivingCost, getSuggestedConsumption } from '../../utils/transportCost.js';
+import { DEFAULT_WEAR_COST_PER_KM, estimatePersonalVehicleCost, getSuggestedConsumption } from '../../utils/transportCost.js';
 import { ACTIVITY_TYPES, getCategoryLabel } from '../../utils/tripWorkspace.js';
 import {
   buildVisibleItineraryDays,
@@ -31,6 +31,7 @@ const EMPTY_FORM = Object.freeze({
   departureLocation: '', departureLatitude: '', departureLongitude: '', transportMode: 'driving',
   durationHours: 1, durationRemainderMinutes: 0, estimatedCost: 0, notes: '', titleAutofilled: false,
   routeDistanceKm: '', vehicleType: 'compact', fuelType: 'petrol', consumptionLPer100Km: getSuggestedConsumption('compact', 'petrol'), fuelPricePerLiter: '', tolls: '',
+  includeWear: false, wearCostPerKm: DEFAULT_WEAR_COST_PER_KM,
 });
 
 export function ItineraryPanel({ trip, onUpdate, onOpenReservation = null, onOpenBooking = null, createRequest = null }) {
@@ -132,6 +133,8 @@ export function ItineraryPanel({ trip, onUpdate, onOpenReservation = null, onOpe
       consumptionLPer100Km: rootActivity.consumptionLPer100Km || getSuggestedConsumption(rootActivity.vehicleType || 'compact', rootActivity.fuelType || 'petrol'),
       fuelPricePerLiter: rootActivity.fuelPricePerLiter || '',
       tolls: rootActivity.tolls || '',
+      includeWear: Boolean(rootActivity.includeWear),
+      wearCostPerKm: rootActivity.wearCostPerKm || DEFAULT_WEAR_COST_PER_KM,
     });
     setShowTransportCost(false);
     setFormOpen(true);
@@ -233,11 +236,13 @@ export function ItineraryPanel({ trip, onUpdate, onOpenReservation = null, onOpe
     if (!distanceKm && [from.latitude, from.longitude, to.latitude, to.longitude].every(Number.isFinite)) {
       distanceKm = estimateRouteSegment(from, to, 'driving').distanceKm;
     }
-    const estimate = estimateDrivingCost({
+    const estimate = estimatePersonalVehicleCost({
       distanceKm,
       consumptionLPer100Km: form.consumptionLPer100Km,
       fuelPricePerLiter: form.fuelPricePerLiter,
       tolls: form.tolls,
+      wearCostPerKm: form.wearCostPerKm,
+      includeWear: form.includeWear,
     });
     if (estimate.distanceKm <= 0 || Number(form.fuelPricePerLiter) <= 0) return;
     setForm((current) => ({ ...current, routeDistanceKm: estimate.distanceKm, estimatedCost: estimate.total }));
@@ -274,6 +279,8 @@ export function ItineraryPanel({ trip, onUpdate, onOpenReservation = null, onOpe
       consumptionLPer100Km: isTransport ? Math.max(0, Number(form.consumptionLPer100Km) || 0) : 0,
       fuelPricePerLiter: isTransport ? Math.max(0, Number(form.fuelPricePerLiter) || 0) : 0,
       tolls: isTransport ? Math.max(0, Number(form.tolls) || 0) : 0,
+      includeWear: isTransport ? Boolean(form.includeWear) : false,
+      wearCostPerKm: isTransport ? Math.max(0, Number(form.wearCostPerKm) || 0) : 0,
       notes: form.notes.trim(),
       reminderMinutes: rootPreviousActivity?.reminderMinutes ?? null,
       externalCalendarUid: rootPreviousActivity?.externalCalendarUid || '',
@@ -523,6 +530,16 @@ export function ItineraryPanel({ trip, onUpdate, onOpenReservation = null, onOpe
                   <Field label={t('itinerary.consumption')}><input name="consumptionLPer100Km" type="number" min="0" step="0.1" value={form.consumptionLPer100Km} onChange={updateField} /></Field>
                   <Field label={t('itinerary.fuelPrice')}><input name="fuelPricePerLiter" type="number" min="0" step="0.01" value={form.fuelPricePerLiter} onChange={updateField} /></Field>
                   <Field label={t('itinerary.tolls')}><input name="tolls" type="number" min="0" step="0.01" value={form.tolls} onChange={updateField} /></Field>
+                  <label className="workspace-field vehicle-wear-toggle">
+                    <span className="vehicle-wear-toggle__control">
+                      <input name="includeWear" type="checkbox" checked={form.includeWear} onChange={(event) => setForm((current) => ({ ...current, includeWear: event.target.checked }))} />
+                      <span>{t('itinerary.includeWear')}</span>
+                    </span>
+                    <small className="workspace-field__hint">{t('itinerary.includeWearHint')}</small>
+                  </label>
+                  {form.includeWear && (
+                    <Field label={t('itinerary.wearCostPerKm')}><input name="wearCostPerKm" type="number" min="0" step="0.01" value={form.wearCostPerKm} onChange={updateField} /></Field>
+                  )}
                 </div>
                 <div className="transport-cost-calculator__actions"><Button type="button" size="small" icon="calculator" disabled={!form.routeDistanceKm || !form.fuelPricePerLiter} onClick={calculateTransportCost}>{t('itinerary.applyCostEstimate')}</Button></div>
               </fieldset>
